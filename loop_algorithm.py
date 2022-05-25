@@ -144,6 +144,11 @@ def main():
         Z += weight_factor
 
         # calculate sign
+        sign = 1
+        for x in range(t//2):
+            if fermion[0, 2*x] != fermion[-1, 2*x] and fermion[0, 2*x+1] != fermion[-1, 2*x+1] and fermion[0, 2 * x] != fermion[0, 2 * x + 1]:
+                sign *= 1
+
 
         # calculate average occupancy
         n_occupied = 0
