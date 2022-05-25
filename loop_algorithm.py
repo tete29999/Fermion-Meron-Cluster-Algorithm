@@ -2,20 +2,22 @@ import random
 import numpy as np
 from itertools import product
 
-
 def mc_step(n, t, w_a, w_b, sign):
     # find clusters and flip
     visited = np.full((n, t), False)  # record if site has been visited
     x = 0
     y = 0
+    new_sign = sign
 
     while True:
         flip = 0 if random.random() < 0.5 else 1  # decide if next cluster is to be flipped
         while True:
-            n_h = 0
-            n_w = 0
+            visited_this_loop = np.full((n, t), False)
+            n_h = 0 # number of horizontal plaquettes empty -> occupied for sign
+            n_w = 0 # number of time loops
             fermion[x, y] = 1 - fermion[x, y] if flip else fermion[x, y]  # flip
             visited[x, y] = True
+            visited_this_loop[x, y] = True
             # follow bond loop
             if x % 2 == 0 and y % 2 == 0:
                 # top
@@ -42,6 +44,23 @@ def mc_step(n, t, w_a, w_b, sign):
                     x += 1
                 # closed loop
                 else:
+                    # up
+                    if y == 0 and not bond[(x // 2 - 1) % (n // 2), (y - 1) % t] and visited_this_loop[x, (y - 1) % t]:
+                        n_w += 1
+                    # down
+                    elif y == t - 1 and not bond[x // 2, y] and visited_this_loop[x, (y + 1) % t]:
+                        n_w += 1
+                    # left
+                    elif bond[(x // 2 - 1) % (n // 2), (y - 1) % t] and visited_this_loop[(x - 1) % n, y]:
+                        if fermion[(x - 1) % n, y]:
+                            if fermion[x, y]:
+                                n_h += 1
+                    # right
+                    elif bond[x // 2, y] and visited_this_loop[(x + 1) % n, y]:
+                        if fermion[(x + 1) % n, y]:
+                            if fermion[x, y]:
+                                n_h += 1
+                        x += 1
                     break
             elif x % 2 == 1 and y % 2 == 0:
                 # top
@@ -68,6 +87,23 @@ def mc_step(n, t, w_a, w_b, sign):
                     x += 1
                 # closed loop
                 else:
+                    # up
+                    if y == 0 and not bond[x // 2, (y - 1) % t] and visited_this_loop[x, (y - 1) % t]:
+                        n_w += 1
+                    # down
+                    elif y == t - 1 and not bond[x // 2, y] and visited_this_loop[x, (y + 1) % t]:
+                        n_w += 1
+                    # left
+                    elif bond[x // 2, y] and visited_this_loop[(x - 1) % n, y]:
+                        if fermion[(x - 1) % n, y]:
+                            if fermion[x, y]:
+                                n_h += 1
+                    # right
+                    elif bond[x // 2, (y - 1) % t] and visited_this_loop[(x + 1) % n, y]:
+                        if fermion[(x + 1) % n, y]:
+                            if fermion[x, y]:
+                                n_h += 1
+                        x += 1
                     break
             elif x % 2 == 0 and y % 2 == 1:
                 # top
@@ -94,6 +130,23 @@ def mc_step(n, t, w_a, w_b, sign):
                     x += 1
                 # closed loop
                 else:
+                    # up
+                    if y == 0 and not bond[x // 2, (y - 1) % t] and visited_this_loop[x, (y - 1) % t]:
+                        n_w += 1
+                    # down
+                    elif y == t - 1 and not bond[(x // 2 - 1) % (n // 2), y] and visited_this_loop[x, (y + 1) % t]:
+                        n_w += 1
+                    # left
+                    elif bond[(x // 2 - 1) % (n // 2), y] and visited_this_loop[(x - 1) % n, y]:
+                        if fermion[(x - 1) % n, y]:
+                            if fermion[x, y]:
+                                n_h += 1
+                    # right
+                    elif bond[x // 2, (y - 1) % t] and visited_this_loop[(x + 1) % n, y]:
+                        if fermion[(x + 1) % n, y]:
+                            if fermion[x, y]:
+                                n_h += 1
+                        x += 1
                     break
             elif x % 2 == 1 and y % 2 == 1:
                 # top
@@ -120,11 +173,28 @@ def mc_step(n, t, w_a, w_b, sign):
                     x += 1
                 # closed loop
                 else:
+                    # up
+                    if y == 0 and not bond[x // 2, (y - 1) % t] and visited_this_loop[x, (y - 1) % t]:
+                        n_w += 1
+                    # down
+                    elif y == t - 1 and not bond[x // 2, y] and visited_this_loop[x, (y + 1) % t]:
+                        n_w += 1
+                    # left
+                    elif bond[x // 2, (y - 1) % t] and visited_this_loop[(x - 1) % n, y]:
+                        if fermion[(x - 1) % n, y]:
+                            if fermion[x, y]:
+                                n_h += 1
+                    # right
+                    elif bond[x // 2, y] and visited_this_loop[(x + 1) % n, y]:
+                        if fermion[(x + 1) % n, y]:
+                            if fermion[x, y]:
+                                n_h += 1
+                        x += 1
                     break
             x = x % n  # boundary conditions
             y = y % t
             if flip:
-                sign *= (-1)**(n_w + n_h + 1)
+                new_sign *= (-1)**(n_w + n_h + 1)
 
         full = False
         for i, j in product(range(n), range(t)):
@@ -153,7 +223,7 @@ def mc_step(n, t, w_a, w_b, sign):
         # calculate bond config in nicer lattice for debugging purposes
         bond_debug[x, y] = bond[x // 2, y]
 
-    return sign
+    return new_sign
 
 
 def main():
@@ -161,10 +231,10 @@ def main():
     global bond
     global bond_debug
     n = 4  # number of lattice points
-    t = 20   # number of half timesteps (#even + #odd)
-    b = 1 # beta
-    mc_steps = 50000   # number of mc steps
-    initial_mc_steps = 500
+    t = 10   # number of half timesteps (#even + #odd)
+    b = 0.001 # beta
+    mc_steps = 500000   # number of mc steps
+    initial_mc_steps = 5000
     w_a = np.cosh(b/t)  # weight of a plaquettes U = t = 1
     w_b = np.sinh(b/t)  # weight of b plaquettes
 
@@ -172,7 +242,7 @@ def main():
     # bond lattice is squashed down and initalized to vertical plaquettes
     bond = np.full((n//2, t), False)    # bond lattice, 0 is vertical plaquette A, 1 is horizontal plaquette B
 
-    Z = 0
+    Z_0 = 0
     n_avg = 0
     avg_sign = 0
 
@@ -181,7 +251,7 @@ def main():
     sign = 1 # guess?
 
     for mc in range(initial_mc_steps):
-        mc_step(n, t, w_a, w_b, sign)
+        sign = mc_step(n, t, w_a, w_b, sign)
 
     for mc in range(mc_steps):
 
@@ -191,9 +261,9 @@ def main():
         weight_factor = 1
         for x, y in product(range(n // 2), range(t)):
             weight_factor *= w_a if not bond[x, y] else w_b
-        Z += weight_factor
+        Z_0 += weight_factor
 
-        # calculate  average sign
+        # calculate average sign
         avg_sign += sign * weight_factor
 
         # calculate average occupancy
@@ -205,10 +275,15 @@ def main():
                 n_occupied -= 1
         n_avg += n_occupied / n * sign * weight_factor
 
-    avg_sign = avg_sign / Z
-    print(f'Z = {Z}',)
-    print(f'avg_sign = {avg_sign}')
-    print(f'n_avg = {n_avg / Z / avg_sign}')
+        if mc % 10000 == 0:
+            print(f'Z_0 = {Z_0}',)
+            print(f'avg_sign = {avg_sign / Z_0 }')
+            print(f'n_avg = {n_avg / avg_sign}')
+            print('________________________________')
+
+    print(f'Z_0 = {Z_0}', )
+    print(f'avg_sign = {avg_sign /Z_0}')
+    print(f'n_avg = {n_avg / avg_sign}')
 
 if __name__ == "__main__":
     main()
