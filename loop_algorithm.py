@@ -112,20 +112,21 @@ def main():
     global fermion
     global bond
     global bond_debug
-    n = 8  # number of lattice points
-    t = 10   # number of half timesteps (#even + #odd)
+    n = 4  # number of lattice points
+    t = 50   # number of half timesteps (#even + #odd)
     b = 1 # beta
-    mc_steps = 5000   # number of mc steps
-    initial_mc_steps = 500
-    w_a = np.cosh(b/t)  # weight of a plaquettes U = t = 1
+    mc_steps = 50000000   # number of mc steps
+    initial_mc_steps = 5000
+    w_a = np.exp(b/t)  # weight of a plaquettes U = t = 1
     w_b = np.sinh(b/t)  # weight of b plaquettes
 
     fermion = np.full((n, t), False)    # fermion lattice initialized to empty
     # bond lattice is squashed down and initalized to vertical plaquettes
     bond = np.full((n//2, t), False)    # bond lattice, 0 is vertical plaquette A, 1 is horizontal plaquette B
 
-    Z = 0
+    Z_0 = 0
     n_avg = 0
+    avg_sign = 0
 
     #random.seed(42)
     bond_debug = np.full((n, t), - 1) # only for debugging purposes
@@ -141,14 +142,17 @@ def main():
         weight_factor = 1
         for x, y in product(range(n // 2), range(t)):
             weight_factor *= w_a if not bond[x, y] else w_b
-        Z += weight_factor
+        Z_0 += weight_factor
 
         # calculate sign
         sign = 1
-        for x in range(t//2):
-            if fermion[0, 2*x] != fermion[-1, 2*x] and fermion[0, 2*x+1] != fermion[-1, 2*x+1] and fermion[0, 2 * x] != fermion[0, 2 * x + 1]:
-                sign *= 1
+        for x in range(t//2-1):
+            # TODO maybe wrong plaquettes?
+            if fermion[0, 2*x+1] != fermion[-1, 2*x+1] and fermion[0, 2*x+2] != fermion[-1, 2*x+2] and fermion[0, 2*x+1] != fermion[0, 2*x+2]:
+                sign *= -1
 
+        # calculate average sign
+        avg_sign += sign * weight_factor
 
         # calculate average occupancy
         n_occupied = 0
@@ -157,10 +161,13 @@ def main():
                 n_occupied += 1
             else:
                 n_occupied -= 1
-        n_avg += n_occupied / n * weight_factor
+        n_avg += n_occupied / n * sign * weight_factor
 
-    print(Z)
-    print(n_avg/Z)
+        if mc % 10000 == 0:
+            print(f'Z_0 = {Z_0}')
+            print(f'avg_sign = {avg_sign / Z_0}')
+            print(f'n_avg = {n_avg / avg_sign}')
+            print('________________________________')
 
 if __name__ == "__main__":
     main()
